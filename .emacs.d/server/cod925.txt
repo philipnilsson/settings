@@ -1,0 +1,236 @@
+OBJECT Codeunit 925 Assembly Header-Reserve
+{
+  OBJECT-PROPERTIES
+  {
+    Date=21-12-10;
+    Time=13:58:26;
+    Modified=Yes;
+    Version List=;
+  }
+  PROPERTIES
+  {
+    OnRun=BEGIN
+          END;
+
+  }
+  CODE
+  {
+    VAR
+      CreateReservEntry@1000 : Codeunit 99000830;
+      ReservMgt@1015 : Codeunit 99000845;
+      SetFromType@1011 : ' ,Sales,Requisition Line,Purchase,Item Journal,BOM Journal,Item Ledger Entry,Service,Job';
+      SetFromSubtype@1010 : Integer;
+      SetFromID@1009 : Code[20];
+      SetFromBatchName@1008 : Code[10];
+      SetFromProdOrderLine@1007 : Integer;
+      SetFromRefNo@1006 : Integer;
+      SetFromVariantCode@1005 : Code[10];
+      SetFromLocationCode@1004 : Code[10];
+      SetFromSerialNo@1003 : Code[20];
+      SetFromLotNo@1002 : Code[20];
+      SetFromQtyPerUOM@1001 : Decimal;
+      Text000@1013 : TextConst 'ENU=Reserved quantity cannot be greater than %1';
+      Text001@1012 : TextConst 'ENU=Codeunit is not initialized correctly.';
+      DeleteItemTracking@1014 : Boolean;
+
+    PROCEDURE CreateReservation@1(VAR AssemblyHeader@1000 : Record 900;Description@1001 : Text[50];ExpectedReceiptDate@1002 : Date;Quantity@1003 : Decimal;ForSerialNo@1004 : Code[20];ForLotNo@1005 : Code[20]);
+    VAR
+      ShipmentDate@1007 : Date;
+    BEGIN
+      IF SetFromType = 0 THEN
+        ERROR(Text001);
+
+      AssemblyHeader.TESTFIELD("Item No.");
+      AssemblyHeader.TESTFIELD("Due Date");
+
+      AssemblyHeader.CALCFIELDS("Reserved Qty. (Base)");
+      IF ABS(AssemblyHeader."Remaining Quantity (Base)") < ABS(AssemblyHeader."Reserved Qty. (Base)") + Quantity THEN
+        ERROR(
+          Text000,
+          ABS(AssemblyHeader."Remaining Quantity (Base)") - ABS(AssemblyHeader."Reserved Qty. (Base)"));
+
+      AssemblyHeader.TESTFIELD("Variant Code",SetFromVariantCode);
+      AssemblyHeader.TESTFIELD("Location Code",SetFromLocationCode);
+
+      IF Quantity * SignFactor(AssemblyHeader) < 0 THEN
+        ShipmentDate := AssemblyHeader."Due Date"
+      ELSE BEGIN
+        ShipmentDate := ExpectedReceiptDate;
+        ExpectedReceiptDate := AssemblyHeader."Due Date";
+      END;
+
+      CreateReservEntry.CreateReservEntryFor(
+        DATABASE::"Assembly Header",AssemblyHeader."Document Type",
+        AssemblyHeader."No.",'',0,0,AssemblyHeader."Qty. per Unit of Measure",
+        Quantity,ForSerialNo,ForLotNo);
+      CreateReservEntry.CreateReservEntryFrom(
+        SetFromType,SetFromSubtype,SetFromID,SetFromBatchName,SetFromProdOrderLine,SetFromRefNo,
+        SetFromQtyPerUOM,SetFromSerialNo,SetFromLotNo);
+      CreateReservEntry.CreateReservEntry(
+        AssemblyHeader."Item No.",AssemblyHeader."Variant Code",AssemblyHeader."Location Code",
+        Description,ExpectedReceiptDate,ShipmentDate,0);
+
+      SetFromType := 0;
+    END;
+
+    PROCEDURE CreateReservationSetFrom@9(FromType@1000 : ' ,Sales,Requisition Line,Purchase,Item Journal,BOM Journal,Item Ledger Entry,Service,Job,Assembly Header,Assembly Line';FromSubtype@1001 : Integer;FromID@1002 : Code[20];FromBatchName@1003 : Code[10];FromAssemblyHeader@1004 : Integer;FromRefNo@1005 : Integer;FromVariantCode@1006 : Code[10];FromLocationCode@1007 : Code[10];FromSerialNo@1009 : Code[20];FromLotNo@1010 : Code[20];FromQtyPerUOM@1011 : Decimal);
+    BEGIN
+      SetFromType := FromType;
+      SetFromSubtype := FromSubtype;
+      SetFromID := FromID;
+      SetFromBatchName := FromBatchName;
+      SetFromRefNo := FromRefNo;
+      SetFromVariantCode := FromVariantCode;
+      SetFromLocationCode := FromLocationCode;
+      SetFromSerialNo := FromSerialNo;
+      SetFromLotNo := FromLotNo;
+      SetFromQtyPerUOM := FromQtyPerUOM;
+    END;
+
+    LOCAL PROCEDURE SignFactor@21(AssemblyHeader@1000 : Record 900) : Integer;
+    BEGIN
+      IF AssemblyHeader."Document Type" IN [2,3,5] THEN
+        ERROR(Text001);
+
+      EXIT(1);
+    END;
+
+    PROCEDURE SetBinding@15(Binding@1000 : ' ,Order-to-Order');
+    BEGIN
+      CreateReservEntry.SetBinding(Binding);
+    END;
+
+    PROCEDURE FilterReservFor@12(VAR FilterReservEntry@1000 : Record 337;AssemblyHeader@1001 : Record 900);
+    BEGIN
+      //***
+      FilterReservEntry.SETRANGE("Source Type",DATABASE::"Assembly Header");
+      FilterReservEntry.SETRANGE("Source Subtype",AssemblyHeader."Document Type");
+      FilterReservEntry.SETRANGE("Source ID",AssemblyHeader."No.");
+      FilterReservEntry.SETRANGE("Source Batch Name",'');
+      FilterReservEntry.SETRANGE("Source Prod. Order Line",0);
+      FilterReservEntry.SETRANGE("Source Ref. No.",0);
+    END;
+
+    PROCEDURE Caption@30(AssemblyHeader@1001 : Record 900) CaptionText@1000 : Text[80];
+    BEGIN
+    END;
+
+    PROCEDURE FindReservEntry@4(AssemblyHeader@1000 : Record 900;VAR ReservEntry@1001 : Record 337) : Boolean;
+    BEGIN
+    END;
+
+    PROCEDURE VerifyChange@59(VAR NewAssemblyHeader@1000 : Record 900;VAR OldAssemblyHeader@1001 : Record 900);
+    VAR
+      AssemblyHeader@1005 : Record 900;
+      TempReservEntry@1002 : Record 337;
+      ShowError@1003 : Boolean;
+      HasError@1004 : Boolean;
+    BEGIN
+    END;
+
+    PROCEDURE VerifyQuantity@5(VAR NewAssemblyHeader@1000 : Record 900;VAR OldAssemblyHeader@1001 : Record 900);
+    VAR
+      AssemblyHeader@1002 : Record 900;
+    BEGIN
+    END;
+
+    PROCEDURE UpdatePlanningFlexibility@2(VAR AssemblyHeader@1000 : Record 900);
+    VAR
+      ReservEntry@1001 : Record 337;
+    BEGIN
+    END;
+
+    PROCEDURE DeleteLine@6(VAR AssemblyHeader@1000 : Record 900);
+    BEGIN
+      //***
+      //IF Blocked THEN
+      //  EXIT;
+
+      WITH AssemblyHeader DO BEGIN
+        ReservMgt.SetAssemblyHeader(AssemblyHeader);
+        IF DeleteItemTracking THEN
+          ReservMgt.SetItemTrackingHandling(1); // Allow Deletion
+        ReservMgt.DeleteReservEntries(TRUE,0);
+      //  DeleteInvoiceSpecFromLine(AssemblyHeader);
+      //  ReservMgt.ClearActionMessageReferences;
+        CALCFIELDS("Reserved Qty. (Base)");
+        AssignForPlanning(AssemblyHeader);
+      END;
+    END;
+
+    PROCEDURE AssignForPlanning@7(VAR AssemblyHeader@1000 : Record 900);
+    VAR
+      PlanningAssignment@1001 : Record 99000850;
+    BEGIN
+    END;
+
+    PROCEDURE Block@8(SetBlocked@1000 : Boolean);
+    BEGIN
+    END;
+
+    PROCEDURE CallItemTracking@3(VAR AssemblyHeader@1000 : Record 900);
+    VAR
+      TrackingSpecification@1002 : Record 336;
+      ItemTrackingForm@1001 : Page 6510;
+    BEGIN
+      //***
+      InitTrackingSpecification(AssemblyHeader,TrackingSpecification);
+      ItemTrackingForm.SetSource(TrackingSpecification,AssemblyHeader."Due Date");
+      ItemTrackingForm.RUNMODAL;
+    END;
+
+    PROCEDURE DeleteLineConfirm@11(VAR AssemblyHeader@1000 : Record 900) : Boolean;
+    BEGIN
+      //***
+      WITH AssemblyHeader DO BEGIN
+        IF NOT ReservEntryExist(AssemblyHeader) THEN
+          EXIT(TRUE);
+
+        ReservMgt.SetAssemblyHeader(AssemblyHeader);
+        IF ReservMgt.DeleteItemTrackingConfirm THEN
+          DeleteItemTracking := TRUE;
+      END;
+
+      EXIT(DeleteItemTracking);
+    END;
+
+    PROCEDURE InitTrackingSpecification@13(VAR AssemblyHeader@1001 : Record 900;VAR TrackingSpecification@1000 : Record 336);
+    BEGIN
+      //***
+      TrackingSpecification.INIT;
+      TrackingSpecification."Source Type" := DATABASE::"Assembly Header";
+      WITH AssemblyHeader DO BEGIN
+        TrackingSpecification."Item No." := "Item No.";
+        TrackingSpecification."Location Code" := "Location Code";
+        TrackingSpecification.Description := Description;
+        TrackingSpecification."Variant Code" := "Variant Code";
+        TrackingSpecification."Source Subtype" := "Document Type";
+        TrackingSpecification."Source ID" := "No.";
+        TrackingSpecification."Source Batch Name" := '';
+        TrackingSpecification."Source Prod. Order Line" := 0;
+        TrackingSpecification."Source Ref. No." := 0;
+        TrackingSpecification."Quantity (Base)" := "Quantity (Base)";
+        TrackingSpecification."Qty. per Unit of Measure" := "Qty. per Unit of Measure";
+        TrackingSpecification."Bin Code" := "Bin Code";
+        TrackingSpecification."Qty. to Handle (Base)" := "Quantity to Assemble (Base)";
+        TrackingSpecification."Quantity Handled (Base)" := "Assembled Quantity (Base)";
+        TrackingSpecification."Qty. to Handle" := "Quantity to Assemble";
+      END;
+    END;
+
+    PROCEDURE ReservEntryExist@16(AssemblyHeader@1000 : Record 900) : Boolean;
+    VAR
+      ReservEntry@1002 : Record 337;
+      ReservEngineMgt@1001 : Codeunit 99000831;
+    BEGIN
+      //***
+      ReservEngineMgt.InitFilterAndSortingLookupFor(ReservEntry,FALSE);
+      FilterReservFor(ReservEntry,AssemblyHeader);
+      EXIT(NOT ReservEntry.ISEMPTY);
+    END;
+
+    BEGIN
+    END.
+  }
+}
+

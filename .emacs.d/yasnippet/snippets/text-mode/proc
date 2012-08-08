@@ -1,0 +1,4 @@
+PROCEDURE $1@$2 ();
+BEGIN
+  $0
+END;
